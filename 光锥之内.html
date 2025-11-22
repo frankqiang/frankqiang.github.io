@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>光锥之内 - To You</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel Standalone for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Noto Serif SC', 'Microsoft YaHei', serif;
+        }
+
+        .font-hand {
+            font-family: 'Ma Shan Zheng', cursive;
+        }
+        
+        @keyframes floatUp {
+            0% {
+                transform: translateY(0) translateX(0) scale(1);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            25% {
+                transform: translateY(-200px) translateX(20px) scale(1.1);
+            }
+            50% {
+                transform: translateY(-400px) translateX(-15px) scale(1);
+            }
+            75% {
+                transform: translateY(-600px) translateX(25px) scale(0.9);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-900px) translateX(0) scale(0.5);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes pulse-soft {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .animate-pulse-soft {
+            animation: pulse-soft 2s infinite ease-in-out;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Sparkle animation */
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect, useCallback, useMemo } = React;
+
+        // --- Icons ---
+        const HeartIcon = ({ size = 24, fill = 'currentColor', className = '' }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} className={className}>
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+        );
+
+        const MusicIcon = ({ size = 24, className = '' }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+            </svg>
+        );
+        
+        const MusicOffIcon = ({ size = 24, className = '' }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <line x1="1" y1="1" x2="23" y2="23" /><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+            </svg>
+        );
+
+        const SendIcon = ({ size = 20, className = '' }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+        );
+
+        const SparklesIcon = ({ size = 20, className = '' }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/>
+                <path d="M19 12l.75 2.25L22 15l-2.25.75L19 18l-.75-2.25L16 15l2.25-.75L19 12z"/>
+            </svg>
+        );
+
+        const SettingsIcon = ({ size = 24, className = '' }) => (
+             <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+        );
+
+        // --- Data ---
+        
+        const THEMES = [
+            {
+                id: 'crush',
+                name: '怦然心动',
+                primaryColor: '#ff758c',
+                secondaryColor: '#ff7eb3',
+                gradient: 'linear-gradient(to top, #fad0c4 0%, #ffd1ff 100%)',
+                textShadow: '0 2px 4px rgba(255, 117, 140, 0.3)'
+            },
+            {
+                id: 'twilight',
+                name: '日落私语',
+                primaryColor: '#FDA085',
+                secondaryColor: '#F6D365',
+                gradient: 'linear-gradient(to top, #a18cd1 0%, #fbc2eb 100%)',
+                textShadow: '0 2px 4px rgba(253, 160, 133, 0.3)'
+            },
+            {
+                id: 'night',
+                name: '星河入梦',
+                primaryColor: '#667eea',
+                secondaryColor: '#764ba2',
+                gradient: 'linear-gradient(to top, #30cfd0 0%, #330867 100%)',
+                textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+            }
+        ];
+
+        // 更有哲学感和深度的文案
+        const SWEET_WORDS = [
+            "今晚月色真美", "我们是由星尘组成的", "爱是想触碰又收回手", 
+            "万物皆有裂痕", "光照进来的地方", "瞬间即永恒", 
+            "时间是流动的琥珀", "灵魂的共振", "在量子纠缠中寻找你",
+            "你是我永恒的引力", "所有的偶然都是注定", "未完待续的诗篇",
+            "平行时空的交点", "宇宙级的浪漫", "心跳的同频", 
+            "守望一片星空", "等风也等你", "沉溺于你的引力波",
+            "像恒星守护行星", "目光所及皆是你", "跨越光年的距离"
+        ];
+
+        const EMOTION_TAGS = ['灵魂低语', '星尘来信', '此刻', '永恒', '共鸣'];
+
+        const AI_TEMPLATES = [
+            "如果宇宙是无限的，那么我们相遇的概率就是奇迹。",
+            "我见过银河，却只在你眼中看到了属于我的星辰。",
+            "时间不是线性的，但我对你的感觉是持续的闭环。",
+            "也许在平行时空里，我们早已相拥。",
+            "我们的灵魂，或许在宇宙大爆炸前就已相识。",
+            "你不是路人，你是我漫长岁月里唯一的常数。",
+            "爱是唯一的，可以超越时间与空间的事物。",
+            "我们短暂的交汇，足以照亮整个宇宙。",
+            "在熵增的宇宙里，你是我的负熵。",
+            "想和你一起，去探索这个世界的边缘与尽头。"
+        ];
+
+        // --- Components ---
+
+        // 音乐播放器组件
+        const MusicPlayer = ({ primaryColor }) => {
+            const [isPlaying, setIsPlaying] = useState(false);
+            const audioRef = useRef(null);
+            // Love Story (Piano Version) - 使用网易云外链
+            const bgmUrl = "https://music.163.com/song/media/outer/url?id=441491828.mp3"; 
+
+            const togglePlay = () => {
+                if (audioRef.current) {
+                    if (isPlaying) {
+                        audioRef.current.pause();
+                    } else {
+                        audioRef.current.play().catch(e => console.log("Auto-play prevented", e));
+                    }
+                    setIsPlaying(!isPlaying);
+                }
+            };
+
+            useEffect(() => {
+                const tryPlay = () => {
+                    if(audioRef.current) {
+                         audioRef.current.volume = 0.4;
+                    }
+                }
+                document.addEventListener('click', tryPlay, { once: true });
+                return () => document.removeEventListener('click', tryPlay);
+            }, []);
+
+            return (
+                <div className="fixed top-4 left-4 z-50">
+                    <audio ref={audioRef} src={bgmUrl} loop />
+                    <button 
+                        onClick={togglePlay}
+                        className="p-3 rounded-full glass-panel text-gray-700 hover:scale-110 transition-transform duration-300 shadow-lg"
+                        style={{ color: isPlaying ? primaryColor : '#666' }}
+                    >
+                        <div className={isPlaying ? "animate-spin-slow" : ""}>
+                            {isPlaying ? <MusicIcon /> : <MusicOffIcon />}
+                        </div>
+                    </button>
+                    <style>{`
+                        .animate-spin-slow { animation: spin 4s linear infinite; }
+                        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                    `}</style>
+                </div>
+            );
+        };
+
+        const Heart = ({ data, onRemove }) => {
+            const [isHovered, setIsHovered] = useState(false);
+            const isUserMessage = data.type === 'user-message';
+            const isSpecial = data.text.includes('喜欢') || data.text.includes('爱');
+
+            useEffect(() => {
+                const timer = setTimeout(() => onRemove(data.id), data.duration * 1000);
+                return () => clearTimeout(timer);
+            }, []);
+
+            return (
+                <div 
+                    style={{
+                        position: 'absolute',
+                        left: data.x,
+                        top: data.y,
+                        color: data.color,
+                        zIndex: isUserMessage ? 50 : 10,
+                        animation: `floatUp ${data.duration}s linear forwards`,
+                        cursor: 'pointer',
+                        pointerEvents: 'auto'
+                    }}
+                    onMouseEnter={() => setIsHovered(true)}
+                    className={`select-none transform transition-transform duration-300 ${isHovered ? 'scale-125' : 'scale-100'}`}
+                >
+                    <div className="relative flex items-center justify-center">
+                        <HeartIcon 
+                            size={data.size} 
+                            fill={data.color} 
+                            className={`filter drop-shadow-md ${isSpecial ? 'animate-pulse-soft' : ''}`}
+                        />
+                        <div 
+                            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center w-48 pointer-events-none"
+                        >
+                            <span style={{
+                                fontSize: isUserMessage ? '14px' : '12px',
+                                color: isUserMessage ? '#fff' : 'rgba(255,255,255,0.95)',
+                                textShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                                fontWeight: isUserMessage ? 'bold' : 'normal',
+                                fontFamily: isUserMessage ? 'Noto Serif SC' : 'Ma Shan Zheng',
+                                display: 'block',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                            }}>
+                                {data.text}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const MessageInput = ({ theme, onSubmit }) => {
+            const [text, setText] = useState('');
+            const [activeTag, setActiveTag] = useState(EMOTION_TAGS[0]);
+            const [isFocus, setIsFocus] = useState(false);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!text.trim()) return;
+                const isSpecial = text.includes("喜欢") || text.includes("在一起") || text.includes("爱");
+                onSubmit(text, activeTag, isSpecial);
+                setText('');
+            };
+
+            const generateAI = () => {
+                const randomText = AI_TEMPLATES[Math.floor(Math.random() * AI_TEMPLATES.length)];
+                setText(randomText);
+            };
+
+            return (
+                <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6 flex justify-center z-50 pointer-events-none">
+                    <div className="glass-panel rounded-3xl p-4 w-full max-w-lg pointer-events-auto transform transition-all duration-300 hover:-translate-y-1">
+                        <div className="flex overflow-x-auto pb-3 gap-2 custom-scrollbar no-scrollbar mb-2">
+                            {EMOTION_TAGS.map(tag => (
+                                <button
+                                    key={tag}
+                                    onClick={() => setActiveTag(tag)}
+                                    className={`px-3 py-1 rounded-full text-xs whitespace-nowrap transition-all duration-300 border ${
+                                        activeTag === tag 
+                                        ? 'bg-white text-pink-500 border-pink-200 shadow-sm' 
+                                        : 'bg-transparent text-gray-600 border-transparent hover:bg-white/30'
+                                    }`}
+                                >
+                                    {tag}
+                                </button>
+                            ))}
+                            <button 
+                                onClick={generateAI}
+                                className="ml-auto px-3 py-1 rounded-full text-xs whitespace-nowrap flex items-center gap-1 bg-gradient-to-r from-purple-400 to-pink-400 text-white shadow-sm hover:shadow-md transition-all"
+                            >
+                                <SparklesIcon size={12} /> 灵感
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="relative flex items-center gap-2">
+                            <input
+                                type="text"
+                                value={text}
+                                onChange={e => setText(e.target.value)}
+                                onFocus={() => setIsFocus(true)}
+                                onBlur={() => setIsFocus(false)}
+                                maxLength={40}
+                                placeholder={activeTag === '灵魂低语' ? '写下灵魂的共鸣...' : '此刻的想法...'}
+                                className="glass-input w-full rounded-xl py-3 pl-4 pr-12 text-gray-700 placeholder-gray-400 outline-none transition-all"
+                            />
+                            <div className="absolute right-14 text-xs text-gray-400">
+                                {text.length}/40
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={!text.trim()}
+                                className="p-3 rounded-xl text-white shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:scale-100"
+                                style={{ background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})` }}
+                            >
+                                <SendIcon size={20} />
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        const MessageLog = ({ messages }) => {
+            const endRef = useRef(null);
+            useEffect(() => {
+                endRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, [messages]);
+
+            if (messages.length === 0) return null;
+
+            return (
+                <div className="fixed bottom-32 right-4 w-64 max-h-60 overflow-y-auto custom-scrollbar z-40 pointer-events-none flex flex-col items-end gap-2">
+                    {messages.map((msg) => (
+                        <div 
+                            key={msg.id}
+                            className="glass-panel p-3 rounded-2xl rounded-br-none text-sm text-gray-700 shadow-sm pointer-events-auto max-w-full break-words animate-[slideInFromRight_0.3s_ease-out]"
+                        >
+                             <span className="text-xs text-pink-500 block mb-1 opacity-70">{msg.tag}</span>
+                             {msg.text}
+                        </div>
+                    ))}
+                    <div ref={endRef} />
+                </div>
+            );
+        };
+
+        function App() {
+            const [theme, setTheme] = useState(THEMES[0]);
+            const [hearts, setHearts] = useState([]);
+            const [messages, setMessages] = useState([]);
+            const nextId = useRef(0);
+            const containerRef = useRef(null);
+
+            const addHeart = useCallback((x, y, type = 'auto', text = null, color = null) => {
+                const id = nextId.current++;
+                const isUser = type === 'user-message';
+                
+                const newHeart = {
+                    id,
+                    x,
+                    y,
+                    size: isUser ? 100 : (type === 'click' ? 60 : Math.random() * 30 + 20),
+                    text: text || SWEET_WORDS[Math.floor(Math.random() * SWEET_WORDS.length)],
+                    color: color || (Math.random() > 0.6 ? theme.primaryColor : '#fff'),
+                    duration: isUser ? 20 : Math.random() * 5 + 5,
+                    type
+                };
+
+                setHearts(prev => {
+                    // 增加密度：最大数量提升到 100
+                    if (prev.length > 100) return [...prev.slice(1), newHeart];
+                    return [...prev, newHeart];
+                });
+            }, [theme]);
+
+            const removeHeart = useCallback((id) => {
+                setHearts(prev => prev.filter(h => h.id !== id));
+            }, []);
+
+            // 自动冒泡泡 - 频率加快
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    if (document.hidden) return;
+                    // 每次可能生成 1-2 个爱心
+                    const count = Math.random() > 0.7 ? 2 : 1;
+                    for(let i=0; i<count; i++) {
+                        const x = Math.random() * (window.innerWidth - 50);
+                        const y = window.innerHeight + 50 + (i * 100); // 错开位置
+                        addHeart(x, y, 'auto');
+                    }
+                }, 800); // 频率从 1500ms 提升到 800ms
+                return () => clearInterval(interval);
+            }, [addHeart]);
+
+            const handleInteraction = (e) => {
+                if (e.target.closest('button, input, form')) return;
+                let clientX, clientY;
+                if (e.type.startsWith('touch')) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+                addHeart(clientX, clientY, 'click', null, theme.primaryColor);
+            };
+
+            const handleMessageSubmit = (text, tag, isSpecial) => {
+                const x = Math.random() * (window.innerWidth * 0.6) + window.innerWidth * 0.2;
+                const y = window.innerHeight - 150;
+                addHeart(x, y, 'user-message', text, '#ff4757');
+
+                if (isSpecial) {
+                    for(let i=0; i<15; i++) {
+                        setTimeout(() => {
+                            addHeart(
+                                window.innerWidth / 2 + (Math.random() - 0.5) * 300,
+                                window.innerHeight + 100,
+                                'click', 
+                                "❤️", 
+                                theme.primaryColor
+                            );
+                        }, i * 80);
+                    }
+                }
+                setMessages(prev => [...prev, { id: Date.now(), text, tag }]);
+            };
+
+            const cycleTheme = () => {
+                const currentIndex = THEMES.findIndex(t => t.id === theme.id);
+                const nextIndex = (currentIndex + 1) % THEMES.length;
+                setTheme(THEMES[nextIndex]);
+            };
+
+            return (
+                <div 
+                    ref={containerRef}
+                    className="relative w-full h-screen overflow-hidden transition-colors duration-1000 ease-in-out"
+                    style={{ background: theme.gradient }}
+                    onClick={handleInteraction}
+                    onTouchStart={handleInteraction}
+                >
+                    <div className="absolute inset-0 pointer-events-none opacity-30" 
+                        style={{ 
+                            backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                            backgroundSize: '30px 30px'
+                        }} 
+                    />
+
+                    <div className="absolute top-12 left-0 right-0 text-center pointer-events-none z-20">
+                         <h1 className="font-hand text-4xl md:text-6xl text-white opacity-90 drop-shadow-lg tracking-widest animate-pulse-soft">
+                            光锥之内
+                        </h1>
+                        <p className="mt-2 text-sm md:text-base text-white/80 font-serif tracking-widest">
+                            To: 漫长岁月里的常数
+                        </p>
+                    </div>
+
+                    <MusicPlayer primaryColor={theme.primaryColor} />
+
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); cycleTheme(); }}
+                        className="fixed top-4 right-4 z-50 p-3 rounded-full glass-panel text-white hover:scale-110 transition-transform"
+                        title="切换氛围"
+                    >
+                        <SettingsIcon />
+                    </button>
+
+                    {hearts.map(heart => (
+                        <Heart key={heart.id} data={heart} onRemove={removeHeart} />
+                    ))}
+
+                    <MessageLog messages={messages} />
+
+                    <MessageInput theme={theme} onSubmit={handleMessageSubmit} />
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
